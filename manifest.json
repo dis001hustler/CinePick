@@ -6,7 +6,7 @@
   "scope": "/CinePick/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#e50914",
+  "theme_color": "#0f0f0f",
   "background_color": "#0f0f0f",
   "categories": ["entertainment", "lifestyle"],
   "screenshots": [
