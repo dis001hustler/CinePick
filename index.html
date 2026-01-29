@@ -899,12 +899,74 @@
 
 <script>
   const API_KEY = "c8520fd6";
-  let movies = JSON.parse(localStorage.getItem("movies")) || [];
+  const DB_NAME = "CinePick";
+  const DB_VERSION = 1;
+  const STORE_NAME = "movies";
+  
+  let db = null;
+  let movies = [];
   let listVisible = false;
   let deletedMovies = [];
   let bulkQueue = [];
   let bulkAdded = [];
   let deferredPrompt = null;
+
+  // Initialize IndexedDB
+  async function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onerror = () => {
+        console.error("IndexedDB error:", request.error);
+        reject(request.error);
+      };
+      
+      request.onsuccess = () => {
+        db = request.result;
+        console.log("IndexedDB initialized");
+        resolve(db);
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const database = event.target.result;
+        if (!database.objectStoreNames.contains(STORE_NAME)) {
+          database.createObjectStore(STORE_NAME);
+        }
+      };
+    });
+  }
+
+  // Load all movies from IndexedDB
+  async function loadMoviesFromDB() {
+    if (!db) return [];
+    
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.get("moviesList");
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const data = request.result;
+        movies = data ? data.value : [];
+        resolve(movies);
+      };
+    });
+  }
+
+  // Save movies to IndexedDB
+  async function saveMoviesToDB() {
+    if (!db) return;
+    
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.put({ value: movies }, "moviesList");
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
 
   // Register Service Worker
   if ('serviceWorker' in navigator) {
@@ -944,7 +1006,11 @@
   });
 
   function saveMovies() {
-    localStorage.setItem("movies", JSON.stringify(movies));
+    saveMoviesToDB().catch(err => {
+      console.error("Error saving to IndexedDB:", err);
+      // Fallback to localStorage if IndexedDB fails
+      localStorage.setItem("movies", JSON.stringify(movies));
+    });
   }
 
   // Normalize titles for comparison
@@ -1509,7 +1575,37 @@
   }
 
   updateUndoButton();
-  render();
+  
+  // Initialize IndexedDB and load data
+  (async function() {
+    try {
+      await initDB();
+      
+      // Load movies from IndexedDB
+      await loadMoviesFromDB();
+      
+      // If no data in IndexedDB, try to migrate from localStorage
+      if (movies.length === 0) {
+        const oldData = localStorage.getItem("movies");
+        if (oldData) {
+          try {
+            movies = JSON.parse(oldData);
+            await saveMoviesToDB();
+            console.log("Migrated movies from localStorage to IndexedDB");
+          } catch (e) {
+            console.error("Error migrating data:", e);
+          }
+        }
+      }
+      
+      render();
+    } catch (err) {
+      console.error("Failed to initialize IndexedDB, using localStorage fallback:", err);
+      // Fallback to localStorage if IndexedDB fails
+      movies = JSON.parse(localStorage.getItem("movies")) || [];
+      render();
+    }
+  })();
 </script>
 
 </body>
