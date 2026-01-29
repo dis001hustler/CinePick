@@ -183,8 +183,7 @@
     .result-label {
       font-size: 0.85rem;
       color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.03em;
       margin-bottom: 12px;
       font-weight: 600;
     }
@@ -816,15 +815,12 @@
 
   <div class="action-card">
     <button class="pick-button" id="pickBtn" onclick="pickRandom()">Pick a Movie</button>
-    <div class="movie-count">
-      You have <strong id="count">0</strong> movie<span id="countPlural">s</span> in your list
-    </div>
   </div>
 
   <div class="result-section" id="resultSection" style="display:none;">
     <div class="result-box" id="resultBox">
       <div>
-        <div class="result-label">Now Watching</div>
+        <div class="result-label">Now Watching:</div>
         <div class="result-title" id="resultTitle">Loading...</div>
       </div>
     </div>
@@ -857,9 +853,17 @@
     </div>
   </div>
 
+  <!-- Recently Added Section -->
+  <div class="section-card" id="recentlyAddedSection" style="display: none;">
+    <h2 class="section-title">Recently Added</h2>
+    <div id="recentlyAddedList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;"></div>
+  </div>
+
   <!-- Your Movies Section -->
   <div class="section-card">
-    <h2 class="section-title">Your Movies</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 class="section-title">Your Movies <span id="movieCountBadge" style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">0</span></h2>
+    </div>
     <div class="button-group">
       <button class="button-primary" id="toggleBtn" onclick="toggleList()">Show Movies</button>
       <button class="button-secondary" id="undoBtn" onclick="undoDelete()" disabled>Undo</button>
@@ -1542,7 +1546,7 @@
     setTimeout(async () => {
       const randomMovie = movies[Math.floor(Math.random() * movies.length)];
       
-      resultBox.innerHTML = `<div><div class="result-label">Now Watching</div><div class="result-title">${randomMovie}</div></div>`;
+      resultBox.innerHTML = `<div><div class="result-label">Now Watching:</div><div class="result-title">${randomMovie}</div></div>`;
       
       const details = await fetchMovieDetails(randomMovie);
       displayMovieDetails(details);
@@ -1569,8 +1573,35 @@
       });
     }
     
-    document.getElementById("count").textContent = movies.length;
-    document.getElementById("countPlural").textContent = movies.length === 1 ? '' : 's';
+    // Update movie count badge
+    document.getElementById("movieCountBadge").textContent = movies.length;
+    
+    // Update recently added section
+    const recentSection = document.getElementById("recentlyAddedSection");
+    const recentList = document.getElementById("recentlyAddedList");
+    
+    if (movies.length > 0) {
+      const recentMovies = movies.slice(-5).reverse(); // Last 5 movies, reversed
+      recentSection.style.display = "block";
+      recentList.innerHTML = "";
+      
+      recentMovies.forEach((movie) => {
+        const tag = document.createElement("span");
+        tag.style.cssText = `
+          background: var(--bg-card-hover);
+          border: 1px solid var(--border);
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          display: inline-block;
+        `;
+        tag.textContent = movie;
+        recentList.appendChild(tag);
+      });
+    } else {
+      recentSection.style.display = "none";
+    }
+    
     document.getElementById("clearBtn").disabled = movies.length === 0;
   }
 
